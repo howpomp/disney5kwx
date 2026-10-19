@@ -88,6 +88,23 @@ img, iframe { max-width: 100%; }
 .verdict { padding: 10px 12px; border-radius: 4px; background: var(--panel-2); border-left: 4px solid var(--muted); margin-bottom: 12px; font-size: 15.5px; }
 .verdict b { font: 600 19px/1.2 var(--display); display: block; }
 .verdict.ok { border-color: var(--ok); } .verdict.caution { border-color: var(--caution); } .verdict.warn { border-color: var(--warn); }
+.race-bottomline { display:flex; flex-wrap:wrap; gap:7px 14px; margin:-4px 0 12px; padding:8px 10px; border:1px solid var(--line); border-radius:4px; background:var(--panel-2); font:500 16px/1.2 var(--display); }
+.race-bottomline span { white-space:nowrap; }
+.race-cards { display:none; }
+.race-card { border:1px solid var(--line); border-radius:5px; padding:10px; background:var(--panel-2); }
+.race-card.in-window { border-color:var(--wine); box-shadow:inset 0 3px 0 var(--wine); }
+.race-card h3 { margin:0 0 7px; font:600 21px/1 var(--display); }
+.race-card dl { margin:0; display:grid; grid-template-columns:1fr auto; gap:4px 12px; }
+.race-card dt { color:var(--muted); }
+.race-card dd { margin:0; font:500 16px/1.15 var(--display); text-align:right; }
+.ops-next { border-color:var(--lamp); box-shadow:inset 4px 0 0 var(--lamp); }
+.ops-next p { margin:4px 0 0; font-size:15px; }
+.refresh-btn { appearance:none; border:1px solid var(--line); background:var(--panel-2); color:var(--ink); border-radius:4px; padding:6px 9px; font:600 14px/1 var(--display); cursor:pointer; margin-top:5px; justify-self:start; }
+.refresh-btn:hover { border-color:var(--lamp); }
+.refresh-btn:disabled { opacity:.55; cursor:wait; }
+.travel.deemphasized { opacity:.72; }
+.travel.deemphasized .grid-3 { display:none; }
+.travel.deemphasized .meta::before { content:"Travel detail minimized while the group is on property. "; }
 
 .ribbon-wrap { position: relative; margin: 0 0 4px 120px; }
 .ribbon { height: 34px; border-radius: 4px 4px 0 0; position: relative; }
@@ -170,9 +187,7 @@ table.race-table, table.hourly, table.obs { width: 100%; border-collapse: collap
 .hourly thead th { font: 600 15px/1 var(--display); }
 .hourly td { font: 500 16px/1 var(--display); }
 
-/* Radar, AFD, tropics */
-.radar-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
-.radar-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+/* AFD + tropics */
 .afd p { margin: 0 0 8px; max-width: 78ch; }
 .storm { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .storm strong { font: 600 17px/1.2 var(--display); display: block; }
@@ -192,7 +207,10 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
   .wrap { padding: 10px; }
   .top h1 { font-size: 28px; }
   .days { grid-template-columns: 1fr 1fr; }
-  .ribbon-wrap { margin-left: 120px; }
+  .race-table-wrap { display:none; }
+  .race-cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .race-bottomline { font-size:15px; }
+  .ribbon-wrap { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -219,8 +237,14 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
       <span class="k">Data status</span>
       <strong id="system-state" class="state loading">Loading</strong>
       <small id="last-refresh">Starting</small>
+      <button class="refresh-btn" id="refresh-now" type="button">Refresh now</button>
     </section>
   </header>
+
+  <section class="panel ops-next" aria-labelledby="next-title">
+    <div class="head"><h2 id="next-title">What matters next</h2><span class="src" id="next-window">Trip weather priorities</span></div>
+    <p id="next-action">Loading the next weather checkpoint.</p>
+  </section>
 
   <!-- RACE MORNING -->
   <section class="panel race" aria-labelledby="race-title">
@@ -232,9 +256,11 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
       <span class="src" id="race-src">NWS Melbourne digital forecast</span>
     </div>
     <div class="verdict" id="race-verdict"><b>Checking the race-morning forecast</b></div>
+    <div class="race-bottomline" id="race-bottomline"><span>Race-morning details loading</span></div>
+    <div class="race-cards" id="race-cards"></div>
     <div class="grid-2">
       <div>
-        <div class="scroll-x">
+        <div class="scroll-x race-table-wrap">
           <div style="min-width:620px">
             <div class="ribbon-wrap"><div class="ribbon" id="ribbon"></div></div>
             <table class="race-table" id="race-table"><tbody><tr><td>Status</td><td>Loading forecast</td></tr></tbody></table>
@@ -283,8 +309,15 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     <p class="meta" id="trip-meta">Awaiting forecast</p>
   </section>
 
+  <!-- HOURLY -->
+  <section class="panel" aria-labelledby="hourly-title">
+    <div class="head"><h2 id="hourly-title">Next 12 hours on property</h2><span class="src">NWS hourly + digital grid</span></div>
+    <div class="scroll-x"><table class="hourly" id="hourly"><tbody><tr><td>Status</td><td>Loading</td></tr></tbody></table></div>
+    <p class="meta" id="hourly-meta">Awaiting forecast</p>
+  </section>
+
   <!-- TRAVEL -->
-  <section class="panel travel" aria-labelledby="travel-title">
+  <section class="panel travel" id="travel-section" aria-labelledby="travel-title">
     <div class="head"><h2 id="travel-title">Philadelphia travel days</h2><span class="src">PHL and MCO point forecasts</span></div>
     <div class="grid-3">
       <div id="travel-phl"><h3>Philadelphia (PHL)</h3><p>Loading</p></div>
@@ -293,19 +326,6 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     </div>
     <p class="meta" id="travel-meta">Awaiting data</p>
   </section>
-
-  <!-- HOURLY + RADAR -->
-  <div class="grid-2">
-    <section class="panel" aria-labelledby="hourly-title">
-      <div class="head"><h2 id="hourly-title">Next 12 hours on property</h2><span class="src">NWS hourly</span></div>
-      <div class="scroll-x"><table class="hourly" id="hourly"><tbody><tr><td>Status</td><td>Loading</td></tr></tbody></table></div>
-      <p class="meta" id="hourly-meta">Awaiting forecast</p>
-    </section>
-    <section class="panel" aria-labelledby="radar-title">
-      <div class="head"><h2 id="radar-title">Radar, KMLB Melbourne</h2><a class="src" href="https://radar.weather.gov/station/KMLB/standard" target="_blank" rel="noopener">Open full radar</a></div>
-      <div class="radar-frame"><iframe src="https://radar.weather.gov/station/KMLB/standard" title="NWS radar KMLB" loading="lazy"></iframe></div>
-    </section>
-  </div>
 
   <!-- AFD + TROPICS -->
   <div class="grid-2">
@@ -589,6 +609,18 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
       const head = `<thead><tr><th></th>${cols.map((c) => `<th>${fmtHour(c.h)}</th>`).join("")}</tr></thead>`;
       const body = rows.map(([label, fn]) => `<tr><td>${label}</td>${cols.map((c) => `<td class="${inWindow(c.h) ? "in-window" : ""}">${fn(c)}</td>`).join("")}</tr>`).join("");
       $("race-table").innerHTML = have ? head + `<tbody>${body}</tbody>` : `<tbody><tr><td>Status</td><td>Race morning is not in the NWS grid yet</td></tr></tbody>`;
+      $("race-cards").innerHTML = have ? cols.map((c) => {
+        const f = wbgtFlag(c.wbgt);
+        const wbgtText = c.wbgt == null ? "—" : `${r0(c.wbgt)}° ${c.wbgtSrc === "est" ? "(estimated)" : "(NWS)"}`;
+        const windText = c.w == null ? "—" : `${compass(c.dir)} ${r0(c.w)} mph${c.gust == null ? "" : `, gust ${r0(c.gust)}`}`;
+        return `<article class="race-card ${inWindow(c.h) ? "in-window" : ""}"><h3>${fmtHour(c.h)}</h3><dl>
+          <dt>Temp / dew point</dt><dd>${r0(c.t)}° / ${r0(c.d)}°</dd>
+          <dt>WBGT</dt><dd>${wbgtText}</dd>
+          <dt>Heat flag</dt><dd>${f.label}</dd>
+          <dt>Rain / thunder</dt><dd>${r0(c.pop)}% / ${r0(c.thun)}%</dd>
+          <dt>Wind</dt><dd>${windText}</dd>
+        </dl></article>`;
+      }).join("") : `<article class="race-card"><h3>Forecast pending</h3>Race morning is not in the NWS grid yet.</article>`;
       renderRibbon();
       renderVerdict(cols.filter((c) => inWindow(c.h)), have);
 
@@ -619,7 +651,12 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
 
   function renderVerdict(win, have) {
     const v = $("race-verdict");
-    if (!have || !win.length) { v.className = "verdict"; v.innerHTML = "<b>Race morning not in the forecast grid yet</b>Check back as Friday comes into range."; return; }
+    if (!have || !win.length) {
+      v.className = "verdict";
+      v.innerHTML = "<b>Race morning not in the forecast grid yet</b>Check back as Friday comes into range.";
+      $("race-bottomline").innerHTML = "<span>Detailed race-morning values will appear when the NWS grid reaches Friday.</span>";
+      return;
+    }
     const nums = (k) => win.map((c) => c[k]).filter((x) => x != null);
     const span = (arr) => arr.length ? (Math.round(Math.min(...arr)) === Math.round(Math.max(...arr)) ? `${Math.round(arr[0])}°F` : `${Math.round(Math.min(...arr))}–${Math.round(Math.max(...arr))}°F`) : "—";
     const t = nums("t"), d = nums("d"), w = nums("wbgt");
@@ -636,6 +673,15 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     if (maxGust >= 25) notes.push(`gusts to ${Math.round(maxGust)} mph`);
     v.className = `verdict ${level}`;
     v.innerHTML = `<b>${headline}</b>During start groups: ${span(t)}, dew point ${span(d)}, WBGT ${span(w)} (${flag.label.toLowerCase()} flag)${notes.length ? "; " + notes.join(", ") : ""}.`;
+    const maxWind = Math.max(0, ...nums("w"));
+    const anyEst = win.some((x) => x.wbgtSrc === "est");
+    $("race-bottomline").innerHTML =
+      `<span>Temp <b>${span(t)}</b></span>` +
+      `<span>Dew point <b>${span(d)}</b></span>` +
+      `<span>WBGT <b>${span(w)}${anyEst ? " estimated" : ""}</b></span>` +
+      `<span>Rain <b>up to ${Math.round(maxPop)}%</b></span>` +
+      `<span>Thunder <b>up to ${Math.round(maxThun)}%</b></span>` +
+      `<span>Wind <b>up to ${Math.round(maxWind)} mph${maxGust ? `, gust ${Math.round(maxGust)}` : ""}</b></span>`;
   }
 
   function renderRibbon() {
@@ -787,18 +833,20 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
   async function loadHourly() {
     try {
       const p = await point("parks");
-      const data = await request(p.forecastHourly);
+      const [data, grid] = await Promise.all([request(p.forecastHourly), request(p.forecastGridData)]);
       const now = Date.now();
       const ps = (data.properties?.periods || []).filter((x) => new Date(x.endTime).getTime() > now).slice(0, 12);
+      const g = grid.properties || {};
       const row = (label, fn) => `<tr><td>${label}</td>${ps.map((x) => `<td>${fn(x)}</td>`).join("")}</tr>`;
       $("hourly").innerHTML = `<thead><tr><th></th>${ps.map((x) => `<th>${fmtHour(new Date(x.startTime))}</th>`).join("")}</tr></thead><tbody>` +
         row("Temp °F", (x) => x.temperature) +
         row("Dew pt °F", (x) => x.dewpoint?.value == null ? "—" : r0(cToF(x.dewpoint.value))) +
         row("Rain %", (x) => x.probabilityOfPrecipitation?.value ?? 0) +
+        row("Thunder %", (x) => r0(gridAt(g.probabilityOfThunder, new Date(x.startTime)))) +
         row("Wind mph", (x) => `${esc(x.windDirection)} ${parseInt(x.windSpeed, 10) || 0}`) +
         row("Sky", (x) => `<span title="${esc(x.shortForecast)}" style="font-size:13px">${esc(x.shortForecast.replace(/^(Mostly|Partly) /, "$1 ").split(" then ")[0])}</span>`) +
         `</tbody>`;
-      $("hourly-meta").textContent = `${C.points.parks.label}. Checked ${fmtTime(new Date())}.`;
+      $("hourly-meta").textContent = `${C.points.parks.label}. Thunder probability is from the NWS digital grid. Checked ${fmtTime(new Date())}.`;
       state.hourly = "current";
     } catch (err) {
       $("hourly").innerHTML = `<tbody><tr><td>Status</td><td class="failed">Hourly forecast failed: ${esc(err.message)}</td></tr></tbody>`;
@@ -870,18 +918,44 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     const crit = [state.obs, state.race, state.alerts];
     let s = "current";
     if (crit.every((x) => x === "failed")) s = "offline";
-    else if (Object.values(state).some((x) => x === "failed")) s = "degraded";
+    else if (crit.some((x) => x === "failed")) s = "degraded";
     else if (crit.some((x) => x === "stale")) s = "stale";
-    else if (Object.values(state).some((x) => x === "loading")) s = "loading";
+    else if (crit.some((x) => x === "loading")) s = "loading";
     const el = $("system-state");
     el.textContent = { current: "Current", stale: "Stale", loading: "Loading", degraded: "Degraded", offline: "Offline" }[s];
     el.className = `state ${s}`;
-    $("last-refresh").textContent = `Last check ${fmtTime(new Date())}`;
+    const secondaryFailed = Object.entries(state).filter(([k,v]) => !["obs","race","alerts"].includes(k) && v === "failed").length;
+    $("last-refresh").textContent = `${secondaryFailed ? `${secondaryFailed} secondary feed issue${secondaryFailed === 1 ? "" : "s"} • ` : ""}Last check ${fmtTime(new Date())}`;
   }
+  function updateNextAction(now = new Date()) {
+    const key = dayKey(now);
+    let text = "Watch forecast confidence and the first race-morning NWS grid values as Friday comes into range.";
+    let window = "Pre-trip";
+    if (key === "2026-10-21") { window = "Arrival day"; text = "Watch South Florida to Orlando travel weather, plus PHL → MCO conditions for the family arrival."; }
+    else if (key === "2026-10-22") { window = "Expo + final prep"; text = "Focus on the overnight trend into race morning: temperature, dew point, rain timing, thunder probability and WBGT."; }
+    else if (key === "2026-10-23" && now < new Date(C.race.lastStart)) { window = "Race morning"; text = "Race conditions are the priority: lightning/thunder first, then rain timing, WBGT, wind and any active NWS products."; }
+    else if (key === "2026-10-23") { window = "Post-race"; text = "Shift focus to park weather for the rest of Friday and Saturday morning travel toward FAU."; }
+    else if (key === "2026-10-24") { window = "Saturday travel"; text = "Watch Orlando departure conditions and the drive south toward FAU; park weather remains secondary."; }
+    else if (key === "2026-10-25" || key === "2026-10-26") { window = "Departure phase"; text = "Bring PHL/MCO travel weather back to the foreground for the family departure and return trip."; }
+    else if (key > "2026-10-26") { window = "Trip complete"; text = "The trip is complete; this dashboard remains available as an archive of the weather setup."; }
+    $("next-window").textContent = window;
+    $("next-action").textContent = text;
+    const travel = $("travel-section");
+    if (travel) travel.classList.toggle("deemphasized", key >= "2026-10-22" && key <= "2026-10-24");
+  }
+
+  async function refreshAll() {
+    const b = $("refresh-now");
+    if (b) { b.disabled = true; b.textContent = "Refreshing…"; }
+    await Promise.allSettled([loadObs(), loadRace(), loadTrip(), loadAlerts(), loadOutlooks(), loadTravel(), loadHourly(), loadAfd(), loadTropics()]);
+    if (b) { b.disabled = false; b.textContent = "Refresh now"; }
+  }
+
   function tick() {
     const now = new Date();
     $("local-date").textContent = fmt(now, { weekday: "short", month: "short", day: "numeric" });
     $("local-clock").textContent = fmt(now, { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    updateNextAction(now);
     const first = new Date(C.race.firstStart).getTime(), last = new Date(C.race.lastStart).getTime();
     const ms = first - now.getTime();
     if (ms > 0) {
@@ -899,9 +973,10 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
 
   function start() {
     $("links").innerHTML = C.links.map((l) => `<a href="${l.url}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("");
+    $("refresh-now").addEventListener("click", refreshAll);
     tick(); setInterval(tick, 1000);
     renderRibbon(); renderSunLine();
-    loadObs(); loadRace(); loadTrip(); loadAlerts(); loadOutlooks(); loadTravel(); loadHourly(); loadAfd(); loadTropics();
+    refreshAll();
     setInterval(loadObs, C.refresh.obs);
     setInterval(loadAlerts, C.refresh.alerts);
     setInterval(() => { loadRace(); loadTrip(); loadHourly(); loadOutlooks(); }, C.refresh.forecast);
