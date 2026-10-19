@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1630">
+<title>Wine &amp; Dine 5K Weather Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0f1630;
+  --panel: #161f3d;
+  --panel-2: #1d2850;
+  --line: #2c3866;
+  --ink: #e6eaf5;
+  --muted: #98a2c3;
+  --wine: #c2457a;
+  --wine-soft: rgba(194, 69, 122, 0.16);
+  --lamp: #f4b740;
+  --ok: #5cc59a;
+  --caution: #f4b740;
+  --warn: #f0605a;
+  --sky-night: #101a3c;
+  --sky-twilight: #3b3f7e;
+  --sky-dawn: #e98a7a;
+  --sky-day: #7fb7e6;
+  --display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #eef1f8;
+    --panel: #ffffff;
+    --panel-2: #f3f5fb;
+    --line: #cfd6ea;
+    --ink: #1a2140;
+    --muted: #5a6488;
+    --wine: #9a2a58;
+    --wine-soft: rgba(154, 42, 88, 0.10);
+    --lamp: #b77c00;
+    --ok: #1f8a5c;
+    --caution: #a86f00;
+    --warn: #c2342d;
+  }
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.45 var(--body); }
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+img, iframe { max-width: 100%; }
+
+.wrap { max-width: 1320px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+
+/* Header */
+.top { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.top > section { background: var(--panel); padding: 12px 14px; display: grid; align-content: center; gap: 2px; }
+.top h1 { margin: 0; font: 700 34px/1 var(--display); letter-spacing: 0.01em; }
+.top .sub { color: var(--muted); font-size: 14px; }
+.top .k { color: var(--muted); font-size: 13px; }
+.top strong { font: 600 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.top small { color: var(--muted); font-size: 12px; }
+.state.current { color: var(--ok); } .state.stale, .state.loading { color: var(--caution); } .state.degraded, .state.offline { color: var(--warn); }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; min-width: 0; }
+.panel h2 { margin: 0; font: 600 21px/1.15 var(--display); letter-spacing: 0.01em; }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.src { color: var(--muted); font-size: 12.5px; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 10px; }
+.grid-2 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.scroll-x { overflow-x: auto; }
+.grid-2 > *, .grid-3 > *, .top > * { min-width: 0; }
+
+/* Race morning hero */
+.race { border-color: var(--wine); box-shadow: inset 4px 0 0 var(--wine); }
+.race-title { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 18px; align-items: end; margin-bottom: 12px; }
+.race-title h2 { font-size: 28px; }
+.race-title p { margin: 2px 0 0; color: var(--muted); }
+.verdict { padding: 10px 12px; border-radius: 4px; background: var(--panel-2); border-left: 4px solid var(--muted); margin-bottom: 12px; font-size: 15.5px; }
+.verdict b { font: 600 19px/1.2 var(--display); display: block; }
+.verdict.ok { border-color: var(--ok); } .verdict.caution { border-color: var(--caution); } .verdict.warn { border-color: var(--warn); }
+
+.ribbon-wrap { position: relative; margin: 0 0 4px 120px; }
+.ribbon { height: 34px; border-radius: 4px 4px 0 0; position: relative; }
+.ribbon .groups { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--lamp); border-right: 2px solid var(--lamp); background: rgba(244, 183, 64, 0.13); }
+.ribbon .groups span { position: absolute; left: 6px; top: 7px; font: 600 14px/1 var(--display); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); white-space: nowrap; }
+.ribbon .sun { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #fff3c4; }
+.ribbon .sun span { position: absolute; left: 5px; bottom: 6px; font: 600 13px/1 var(--display); color: #2a1a00; background: #fff3c4; padding: 2px 4px; border-radius: 3px; white-space: nowrap; }
+.ribbon .now { position: absolute; top: -6px; bottom: -6px; width: 2px; background: var(--wine); }
+
+table.race-table, table.hourly, table.obs { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.race-table { min-width: 620px; table-layout: fixed; }
+.race-table th, .race-table td { padding: 7px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+.race-table th:first-child, .race-table td:first-child { width: 120px; text-align: left; color: var(--muted); font-size: 13px; font-weight: 400; }
+.race-table thead th { font: 600 18px/1 var(--display); }
+.race-table td { font: 500 18px/1.1 var(--display); }
+.race-table td.in-window { background: var(--wine-soft); }
+.flag { display: inline-block; min-width: 64px; padding: 3px 6px; border-radius: 3px; font: 600 14px/1.1 var(--display); color: #10162b; }
+.flag.white { background: #e9eef7; } .flag.green { background: #5cc59a; } .flag.yellow { background: #f4d240; } .flag.red { background: #f0605a; color: #fff; } .flag.black { background: #000; color: #fff; outline: 1px solid #888; }
+.note { color: var(--muted); font-size: 12.5px; margin-top: 8px; max-width: 80ch; }
+
+.point-fc article { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.point-fc article:last-child { border-bottom: 0; }
+.point-fc h3 { margin: 0 0 3px; font: 600 18px/1.2 var(--display); }
+.point-fc h3 span { color: var(--muted); font-weight: 400; font-size: 15px; }
+.point-fc p { margin: 0; max-width: 72ch; }
+.sun-line { display: flex; gap: 18px; flex-wrap: wrap; color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+.sun-line b { color: var(--ink); font: 600 16px/1 var(--display); }
+
+/* Observations */
+.obs th, .obs td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.obs th { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.obs td { font: 500 17px/1.15 var(--display); }
+.obs td small { display: block; color: var(--muted); font: 400 12px/1.2 var(--body); }
+.obs tr.primary td:first-child { box-shadow: inset 3px 0 0 var(--lamp); padding-left: 9px; }
+.trend { font-size: 13px; margin-left: 2px; } .trend.up { color: var(--warn); } .trend.down { color: #7fb7e6; }
+.age-late { color: var(--caution); } .age-stale, .failed { color: var(--warn); }
+.speci { font-size: 11px; color: var(--lamp); margin-left: 4px; }
+
+/* Alerts and outlooks */
+.status-box { padding: 10px 12px; border-radius: 4px; background: var(--panel-2); border-left: 4px solid var(--ok); margin-bottom: 10px; }
+.status-box b { font: 600 18px/1.2 var(--display); display: block; }
+.status-box.caution { border-color: var(--caution); } .status-box.warn { border-color: var(--warn); } .status-box.failed { border-color: var(--warn); }
+.alert-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.alert-item strong { font: 600 16px/1.2 var(--display); }
+.alert-item p { margin: 2px 0; font-size: 14px; }
+.alert-item time { color: var(--muted); font-size: 12px; }
+.outlooks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.outlook { display: block; text-decoration: none; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; }
+.outlook span { color: var(--muted); font-size: 12.5px; display: block; }
+.outlook strong { font: 600 17px/1.2 var(--display); }
+.outlook.clear strong { color: var(--ok); } .outlook.caution strong, .outlook.elevated strong { color: var(--caution); } .outlook.warning strong, .outlook.failed strong { color: var(--warn); }
+
+/* Trip days */
+.days { display: grid; grid-template-columns: repeat(6, minmax(150px, 1fr)); gap: 10px; }
+.day { border: 1px solid var(--line); border-radius: 5px; padding: 10px; background: var(--panel-2); display: grid; gap: 6px; align-content: start; }
+.day.race-day { border-color: var(--wine); box-shadow: inset 0 3px 0 var(--wine); }
+.day.past { opacity: 0.55; }
+.day h3 { margin: 0; font: 600 20px/1 var(--display); }
+.day .what { color: var(--muted); font-size: 13px; min-height: 2.6em; }
+.day .temps { font: 600 26px/1 var(--display); font-variant-numeric: tabular-nums; }
+.day .temps span { color: var(--muted); font-size: 20px; }
+.day .short { font-size: 14px; }
+.day .pop { font-size: 13px; color: var(--muted); }
+.day .pop b { color: var(--ink); }
+.day .missing { color: var(--muted); font-size: 13.5px; }
+.day details summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.day details p { font-size: 13.5px; margin: 6px 0 0; }
+
+/* Travel */
+.travel h3 { margin: 0 0 6px; font: 600 18px/1.2 var(--display); }
+.leg { border-top: 1px solid var(--line); padding: 8px 0; }
+.leg:first-of-type { border-top: 0; }
+.leg .when { color: var(--muted); font-size: 13px; }
+.leg p { margin: 2px 0 0; font-size: 14px; }
+
+/* Hourly */
+.hourly { min-width: 640px; }
+.hourly th, .hourly td { padding: 6px 4px; text-align: center; border-bottom: 1px solid var(--line); }
+.hourly th:first-child, .hourly td:first-child { text-align: left; color: var(--muted); font-size: 13px; font-weight: 400; width: 96px; }
+.hourly thead th { font: 600 15px/1 var(--display); }
+.hourly td { font: 500 16px/1 var(--display); }
+
+/* Radar, AFD, tropics */
+.radar-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.radar-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.afd p { margin: 0 0 8px; max-width: 78ch; }
+.storm { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.storm strong { font: 600 17px/1.2 var(--display); display: block; }
+
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { text-decoration: none; padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; font: 500 15px/1 var(--display); }
+.links a:hover { border-color: var(--wine); }
+footer.site { color: var(--muted); font-size: 12.5px; text-align: center; padding: 6px 0 14px; }
+
+@media (max-width: 1100px) {
+  .top { grid-template-columns: 1fr 1fr; }
+  .top > section:first-child, .top > section:last-child { grid-column: 1 / -1; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .days { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+}
+@media (max-width: 640px) {
+  .wrap { padding: 10px; }
+  .top h1 { font-size: 28px; }
+  .days { grid-template-columns: 1fr 1fr; }
+  .ribbon-wrap { margin-left: 120px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap" aria-label="Disney Wine and Dine 5K trip weather dashboard">
+
+  <header class="top">
+    <section>
+      <h1>Wine &amp; Dine 5K Weather Ops</h1>
+      <span class="sub" id="trip-line">Orlando family trip, Wed Oct 21 to Mon Oct 26</span>
+    </section>
+    <section>
+      <span class="k" id="countdown-label">First start group</span>
+      <strong id="countdown">--</strong>
+      <small id="countdown-sub">Fri Oct 23, 4:30 AM</small>
+    </section>
+    <section>
+      <span class="k" id="local-date">--</span>
+      <strong id="local-clock">--:--</strong>
+      <small>Eastern time</small>
+    </section>
+    <section aria-live="polite">
+      <span class="k">Data status</span>
+      <strong id="system-state" class="state loading">Loading</strong>
+      <small id="last-refresh">Starting</small>
+    </section>
+  </header>
+
+  <!-- RACE MORNING -->
+  <section class="panel race" aria-labelledby="race-title">
+    <div class="race-title">
+      <div>
+        <h2 id="race-title">Race morning, Friday Oct 23</h2>
+        <p>Disney Wine &amp; Dine 5K, EPCOT start area. Start groups go off from 4:30 to 7:30 AM.</p>
+      </div>
+      <span class="src" id="race-src">NWS Melbourne digital forecast</span>
+    </div>
+    <div class="verdict" id="race-verdict"><b>Checking the race-morning forecast</b></div>
+    <div class="grid-2">
+      <div>
+        <div class="scroll-x">
+          <div style="min-width:620px">
+            <div class="ribbon-wrap"><div class="ribbon" id="ribbon"></div></div>
+            <table class="race-table" id="race-table"><tbody><tr><td>Status</td><td>Loading forecast</td></tr></tbody></table>
+          </div>
+        </div>
+        <p class="note" id="wbgt-note">WBGT flags follow ACSM race guidance: under 50°F white, 50–65°F green, 65–73°F yellow, 73–82°F red, 82°F and above black.</p>
+        <p class="meta" id="race-meta">Awaiting forecast</p>
+      </div>
+      <div>
+        <h2 style="font-size:19px;margin-bottom:4px">Point forecast for race day</h2>
+        <div class="point-fc" id="point-fc"><p>Loading NWS point forecast</p></div>
+        <div class="sun-line" id="sun-line"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OBS + ALERTS -->
+  <div class="grid-2">
+    <section class="panel" aria-labelledby="obs-title">
+      <div class="head"><h2 id="obs-title">Airport observations</h2><span class="src">mph, °F, inHg</span></div>
+      <div class="scroll-x">
+        <table class="obs">
+          <thead><tr><th>Station</th><th>Observed</th><th>Temp / dew pt</th><th>Wind</th><th>Gust</th><th>Vis / ceiling</th><th>Baro</th><th>Weather</th></tr></thead>
+          <tbody id="obs-rows"><tr><td colspan="8">Loading observations</td></tr></tbody>
+        </table>
+      </div>
+      <p class="meta" id="obs-meta">KISM primary, KMCO backup</p>
+    </section>
+
+    <section class="panel" aria-labelledby="alerts-title">
+      <div class="head"><h2 id="alerts-title">Watches, warnings, advisories</h2><span class="src" id="alerts-src">Disney property</span></div>
+      <div class="status-box" id="alert-status"><b>Checking active products</b></div>
+      <div id="alert-list"></div>
+      <div class="outlooks">
+        <a class="outlook" id="spc-outlook" href="https://www.spc.noaa.gov/products/outlook/day1otlk.html" target="_blank" rel="noopener"><span>SPC day 1 thunderstorm risk</span><strong>Checking</strong></a>
+        <a class="outlook" id="ero-outlook" href="https://www.wpc.ncep.noaa.gov/qpf/excessive_rainfall_outlook_ero.php" target="_blank" rel="noopener"><span>WPC day 1 excessive rain</span><strong>Checking</strong></a>
+      </div>
+      <p class="meta" id="alerts-meta">No result yet</p>
+    </section>
+  </div>
+
+  <!-- TRIP DAYS -->
+  <section class="panel" aria-labelledby="trip-title">
+    <div class="head"><h2 id="trip-title">Trip forecast, Wednesday to Monday</h2><span class="src" id="trip-src">NWS point forecast, Walt Disney World</span></div>
+    <div class="days" id="days"></div>
+    <p class="meta" id="trip-meta">Awaiting forecast</p>
+  </section>
+
+  <!-- TRAVEL -->
+  <section class="panel travel" aria-labelledby="travel-title">
+    <div class="head"><h2 id="travel-title">Philadelphia travel days</h2><span class="src">PHL and MCO point forecasts</span></div>
+    <div class="grid-3">
+      <div id="travel-phl"><h3>Philadelphia (PHL)</h3><p>Loading</p></div>
+      <div id="travel-mco"><h3>Orlando (MCO)</h3><p>Loading</p></div>
+      <div id="travel-now"><h3>PHL right now</h3><p>Loading</p></div>
+    </div>
+    <p class="meta" id="travel-meta">Awaiting data</p>
+  </section>
+
+  <!-- HOURLY + RADAR -->
+  <div class="grid-2">
+    <section class="panel" aria-labelledby="hourly-title">
+      <div class="head"><h2 id="hourly-title">Next 12 hours on property</h2><span class="src">NWS hourly</span></div>
+      <div class="scroll-x"><table class="hourly" id="hourly"><tbody><tr><td>Status</td><td>Loading</td></tr></tbody></table></div>
+      <p class="meta" id="hourly-meta">Awaiting forecast</p>
+    </section>
+    <section class="panel" aria-labelledby="radar-title">
+      <div class="head"><h2 id="radar-title">Radar, KMLB Melbourne</h2><a class="src" href="https://radar.weather.gov/station/KMLB/standard" target="_blank" rel="noopener">Open full radar</a></div>
+      <div class="radar-frame"><iframe src="https://radar.weather.gov/station/KMLB/standard" title="NWS radar KMLB" loading="lazy"></iframe></div>
+    </section>
+  </div>
+
+  <!-- AFD + TROPICS -->
+  <div class="grid-2">
+    <section class="panel afd" aria-labelledby="afd-title">
+      <div class="head"><h2 id="afd-title">NWS Melbourne discussion highlights</h2><a class="src" href="https://forecast.weather.gov/product.php?site=MLB&issuedby=MLB&product=AFD" target="_blank" rel="noopener">Full discussion</a></div>
+      <div id="afd"><p>Loading latest discussion</p></div>
+      <p class="meta" id="afd-meta">Awaiting product</p>
+    </section>
+    <section class="panel" aria-labelledby="tropics-title">
+      <div class="head"><h2 id="tropics-title">Atlantic tropics</h2><a class="src" href="https://www.nhc.noaa.gov/" target="_blank" rel="noopener">NHC</a></div>
+      <div id="tropics"><p>Checking active systems</p></div>
+      <p class="meta" id="tropics-meta">Awaiting NHC</p>
+    </section>
+  </div>
+
+  <nav class="panel links" aria-label="Weather links" id="links"></nav>
+  <footer class="site">Built by Pompano Weather, pompanoweather.com. Official NWS data refreshes automatically; always follow runDisney and cast member instructions on race morning.</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- CONFIG ----------
+  const C = {
+    tz: "America/New_York",
+    tripDays: [
+      { date: "2026-10-21", note: "Arrival day; Philly family flies PHL to MCO" },
+      { date: "2026-10-22", note: "Parks; pick up 5K bibs at the expo" },
+      { date: "2026-10-23", note: "5K race morning, then parks", race: true },
+      { date: "2026-10-24", note: "Parks; Howard heads home early" },
+      { date: "2026-10-25", note: "Parks" },
+      { date: "2026-10-26", note: "Departure; MCO to PHL" }
+    ],
+    race: {
+      name: "Disney Wine & Dine 5K",
+      date: "2026-10-23",
+      firstStart: "2026-10-23T04:30:00-04:00",
+      lastStart: "2026-10-23T07:30:00-04:00",
+      hours: [4, 5, 6, 7, 8, 9]        // table columns, local hour starts
+    },
+    points: {
+      race:  { lat: 28.3747, lon: -81.5494, label: "EPCOT start area" },
+      parks: { lat: 28.3850, lon: -81.5630, label: "Walt Disney World" },
+      mco:   { lat: 28.4294, lon: -81.3089, label: "Orlando International" },
+      phl:   { lat: 39.8744, lon: -75.2424, label: "Philadelphia International" }
+    },
+    stations: [
+      { id: "KISM", label: "Kissimmee Gateway", primary: true },
+      { id: "KMCO", label: "Orlando Intl", primary: false }
+    ],
+    travelStation: { id: "KPHL", label: "Philadelphia Intl" },
+    travelDays: ["2026-10-21", "2026-10-26"],
+    afdOffice: "MLB",
+    freshness: { current: 60, stale: 90 },
+    refresh: { obs: 120000, forecast: 300000, alerts: 120000, slow: 600000 },
+    links: [
+      { label: "NWS Melbourne", url: "https://www.weather.gov/mlb/" },
+      { label: "GOES lightning (GLM)", url: "https://www.star.nesdis.noaa.gov/GOES/sector_band.php?sat=G19&sector=se&band=EXTENT3&length=12" },
+      { label: "Satellite", url: "https://www.star.nesdis.noaa.gov/GOES/sector.php?sat=G19&sector=se" },
+      { label: "SPC", url: "https://www.spc.noaa.gov/" },
+      { label: "NHC", url: "https://www.nhc.noaa.gov/" },
+      { label: "NWS Philadelphia", url: "https://www.weather.gov/phi/" },
+      { label: "runDisney", url: "https://www.rundisney.com/" },
+      { label: "Pompano Weather", url: "https://pompanoweather.com/" }
+    ]
+  };
+
+  const API = "https://api.weather.gov";
+  const PROXY = "https://fau-weather-data-proxy.howpomp.workers.dev";
+  const SPC_DAY1 = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/1";
+  const WPC_ERO_DAY1 = "https://mapservices.weather.noaa.gov/vector/rest/services/hazards/wpc_precip_hazards/MapServer/0";
+  const state = { obs: "loading", race: "loading", trip: "loading", alerts: "loading", travel: "loading", hourly: "loading", afd: "loading", tropics: "loading", outlooks: "loading" };
+  const pointCache = {};
+
+  // ---------- HELPERS ----------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (d, o) => new Intl.DateTimeFormat("en-US", { timeZone: C.tz, ...o }).format(d);
+  const fmtTime = (d) => fmt(d, { hour: "numeric", minute: "2-digit" });
+  const fmtHour = (d) => fmt(d, { hour: "numeric" });
+  const dayKey = (d) => { const p = new Intl.DateTimeFormat("en-CA", { timeZone: C.tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d); return p; };
+  const localHour = (d) => Number(fmt(d, { hour: "numeric", hour12: false })) % 24;
+  const cToF = (c) => c == null ? null : c * 9 / 5 + 32;
+  const kmhToMph = (v) => v == null ? null : v * 0.621371;
+  const ktToMph = (v) => v == null ? null : v * 1.150779;
+  const mToMi = (v) => v == null ? null : v * 0.000621371;
+  const paToInHg = (v) => v == null ? null : v / 3386.39;
+  const hpaToInHg = (v) => v == null ? null : v * 0.0295300;
+  const r0 = (v) => v == null || Number.isNaN(v) ? "—" : Math.round(v);
+  const compass = (deg) => deg == null ? "VRB" : ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+  // Builds the instant for a local wall-clock time in America/New_York (EDT for this trip, -04:00)
+  const localDate = (ymd, h, m = 0) => new Date(`${ymd}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00-04:00`);
+
+  function request(url) {
+    return fetch(url, { headers: { Accept: "application/geo+json" }, cache: "no-store" }).then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    });
+  }
+
+  async function point(name) {
+    if (pointCache[name]) return pointCache[name];
+    const p = C.points[name];
+    const data = await request(`${API}/points/${p.lat},${p.lon}`);
+    pointCache[name] = data.properties;
+    return data.properties;
+  }
+
+  function parseDuration(text) {
+    const m = text.match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/);
+    return ((Number(m?.[1] || 0) * 24 + Number(m?.[2] || 0)) * 60 + Number(m?.[3] || 0)) * 60000;
+  }
+  function gridAt(series, time) {
+    if (!series?.values) return null;
+    const t = time.getTime();
+    for (const item of series.values) {
+      const [s, d = "PT1H"] = item.validTime.split("/");
+      const start = new Date(s).getTime();
+      if (t >= start && t < start + parseDuration(d)) return item.value;
+    }
+    return null;
+  }
+  function trend(cur, prev, th) {
+    if (cur == null || prev == null || Math.abs(cur - prev) < th) return "";
+    return cur > prev ? '<span class="trend up" aria-label="rising">↑</span>' : '<span class="trend down" aria-label="falling">↓</span>';
+  }
+  function ageInfo(date) {
+    const min = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+    const level = min < C.freshness.current ? "current" : min <= C.freshness.stale ? "late" : "stale";
+    return { min, level, label: min < 1 ? "just now" : `${min} min ago` };
+  }
+
+  // Sunrise / civil dawn (NOAA almanac algorithm)
+  function sunRise(ymd, lat, lon, zenith) {
+    const rad = Math.PI / 180;
+    const [y, mo, d] = ymd.split("-").map(Number);
+    const N = Math.floor((Date.UTC(y, mo - 1, d) - Date.UTC(y, 0, 0)) / 864e5);
+    const lh = lon / 15, t = N + (6 - lh) / 24;
+    const M = 0.9856 * t - 3.289;
+    const L = (M + 1.916 * Math.sin(M * rad) + 0.020 * Math.sin(2 * M * rad) + 282.634 + 720) % 360;
+    let RA = (Math.atan(0.91764 * Math.tan(L * rad)) / rad + 720) % 360;
+    RA = (RA + Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90) / 15;
+    const sd = 0.39782 * Math.sin(L * rad), cd = Math.cos(Math.asin(sd));
+    const ch = (Math.cos(zenith * rad) - sd * Math.sin(lat * rad)) / (cd * Math.cos(lat * rad));
+    const H = (360 - Math.acos(ch) / rad) / 15;
+    const UT = ((H + RA - 0.06571 * t - 6.622 - lh) % 24 + 24) % 24;
+    return new Date(Date.UTC(y, mo - 1, d) + UT * 3600000);
+  }
+
+  // ACSM WBGT race flags (°F)
+  function wbgtFlag(f) {
+    if (f == null) return { cls: "", label: "—" };
+    if (f >= 82) return { cls: "black", label: "Black", rank: 4 };
+    if (f >= 73) return { cls: "red", label: "Red", rank: 3 };
+    if (f >= 65) return { cls: "yellow", label: "Yellow", rank: 2 };
+    if (f >= 50) return { cls: "green", label: "Green", rank: 1 };
+    return { cls: "white", label: "White", rank: 0 };
+  }
+  // Fallback only: Australian BoM shade WBGT approximation (no solar term), used when NWS WBGT is missing
+  function wbgtEstimateF(tc, tdc) {
+    if (tc == null || tdc == null) return null;
+    const e = 6.105 * Math.exp(17.27 * tdc / (237.7 + tdc));
+    return cToF(0.567 * tc + 0.393 * e + 3.94);
+  }
+
+  // ---------- OBSERVATIONS ----------
+  async function fetchMetars(ids) {
+    const r = await fetch(`${PROXY}/metars?ids=${encodeURIComponent(ids.join(","))}`, { cache: "no-store" });
+    if (!r.ok) throw new Error(`Proxy ${r.status}`);
+    const reports = await r.json();
+    if (!Array.isArray(reports)) throw new Error("Invalid METAR response");
+    const map = new Map();
+    ids.forEach((id) => map.set(id, reports.filter((x) => x.icaoId === id).sort((a, b) => Number(b.obsTime || 0) - Number(a.obsTime || 0))));
+    return map;
+  }
+  function metarToObs(list) {
+    const p = list[0], q = list[1] || {};
+    const layer = Array.isArray(p.clouds) ? p.clouds.find((x) => ["BKN", "OVC", "VV"].includes(x.cover)) : null;
+    return {
+      time: p.obsTime ? new Date(Number(p.obsTime) * 1000) : new Date(p.reportTime),
+      speci: p.metarType === "SPECI",
+      t: cToF(p.temp), pt: cToF(q.temp), d: cToF(p.dewp), pd: cToF(q.dewp),
+      dir: Number.isFinite(Number(p.wdir)) ? compass(Number(p.wdir)) : "VRB",
+      w: ktToMph(p.wspd), pw: ktToMph(q.wspd), g: ktToMph(p.wgst),
+      vis: p.visib == null ? "—" : `${p.visib} mi`,
+      cig: layer?.base == null ? "None" : `${layer.cover} ${Number(layer.base).toLocaleString()} ft`,
+      baro: hpaToInHg(p.altim), pbaro: hpaToInHg(q.altim),
+      wx: p.wxString || "—", raw: p.rawOb || ""
+    };
+  }
+  async function nwsObs(id) {
+    const data = await request(`${API}/stations/${id}/observations?limit=4`);
+    const f = data.features || [];
+    if (!f.length) throw new Error("No observations");
+    const p = f[0].properties, q = f[1]?.properties || {};
+    const layer = Array.isArray(p.cloudLayers) ? p.cloudLayers.find((x) => ["BKN", "OVC", "VV"].includes(x.amount)) : null;
+    return {
+      time: new Date(p.timestamp), speci: /^SPECI\b/i.test(p.rawMessage || ""),
+      t: cToF(p.temperature?.value), pt: cToF(q.temperature?.value), d: cToF(p.dewpoint?.value), pd: cToF(q.dewpoint?.value),
+      dir: compass(p.windDirection?.value), w: kmhToMph(p.windSpeed?.value), pw: kmhToMph(q.windSpeed?.value), g: kmhToMph(p.windGust?.value),
+      vis: p.visibility?.value == null ? "—" : `${r0(mToMi(p.visibility.value))} mi`,
+      cig: layer?.base?.value == null ? "None" : `${layer.amount} ${Math.round(layer.base.value / 30.48) * 100} ft`,
+      baro: paToInHg(p.barometricPressure?.value), pbaro: paToInHg(q.barometricPressure?.value),
+      wx: (p.presentWeather || []).map((w) => w.rawString).filter(Boolean).join(" ") || "—", raw: p.rawMessage || ""
+    };
+  }
+  let lastObs = {};
+  async function loadObs() {
+    const ids = [...C.stations.map((s) => s.id), C.travelStation.id];
+    let byId = {};
+    let source = "AWC METAR via proxy";
+    try {
+      const map = await fetchMetars(ids);
+      ids.forEach((id) => { if (map.get(id)?.length) byId[id] = metarToObs(map.get(id)); });
+    } catch (_) { source = "NWS API"; }
+    const missing = ids.filter((id) => !byId[id]);
+    if (missing.length) {
+      const res = await Promise.allSettled(missing.map(nwsObs));
+      res.forEach((r, i) => { if (r.status === "fulfilled") byId[missing[i]] = r.value; });
+      if (source !== "NWS API" && res.some((r) => r.status === "fulfilled")) source += " + NWS API";
+    }
+    lastObs = byId;
+    let anyCurrent = false;
+    $("obs-rows").innerHTML = C.stations.map((s) => {
+      const o = byId[s.id];
+      if (!o) return `<tr class="${s.primary ? "primary" : ""}"><td>${s.id}<small>${s.label}</small></td><td colspan="7" class="failed">Data unavailable</td></tr>`;
+      const age = ageInfo(o.time);
+      if (age.level === "current") anyCurrent = true;
+      return `<tr class="${s.primary ? "primary" : ""}">
+        <td>${s.id}<small>${s.label}${s.primary ? ", primary" : ", backup"}</small></td>
+        <td class="age-${age.level}">${fmtTime(o.time)}${o.speci ? '<span class="speci">SPECI</span>' : ""}<small>${age.label}</small></td>
+        <td>${r0(o.t)}° / ${r0(o.d)}° ${trend(o.t, o.pt, 2)}</td>
+        <td>${o.dir} ${r0(o.w)} ${trend(o.w, o.pw, 3)}</td>
+        <td>${o.g == null ? "—" : r0(o.g)}</td>
+        <td>${esc(o.vis)}<small>${esc(o.cig)}</small></td>
+        <td>${o.baro == null ? "—" : o.baro.toFixed(2)} ${trend(o.baro, o.pbaro, 0.03)}</td>
+        <td title="${esc(o.raw)}">${esc(o.wx)}</td>
+      </tr>`;
+    }).join("");
+    $("obs-meta").textContent = `Source: ${source}. Checked ${fmtTime(new Date())}. Hover the weather column for the raw report.`;
+    state.obs = anyCurrent ? "current" : Object.keys(byId).length ? "stale" : "failed";
+    renderTravelNow();
+    updateState();
+  }
+
+  // ---------- RACE MORNING ----------
+  async function loadRace() {
+    try {
+      const p = await point("race");
+      const [grid, fc] = await Promise.all([request(p.forecastGridData), request(p.forecast)]);
+      const g = grid.properties;
+      const hours = C.race.hours.map((h) => localDate(C.race.date, h));
+      const firstStart = new Date(C.race.firstStart), lastStart = new Date(C.race.lastStart);
+      const inWindow = (h) => h.getTime() + 3600000 > firstStart.getTime() && h.getTime() < lastStart.getTime() + 3600000;
+
+      const cols = hours.map((h) => {
+        const tc = gridAt(g.temperature, h), tdc = gridAt(g.dewpoint, h);
+        const nwsW = gridAt(g.wetBulbGlobeTemperature, h);
+        const wbgt = nwsW != null ? cToF(nwsW) : wbgtEstimateF(tc, tdc);
+        return {
+          h, t: cToF(tc), d: cToF(tdc), rh: gridAt(g.relativeHumidity, h),
+          wbgt, wbgtSrc: nwsW != null ? "nws" : (wbgt != null ? "est" : null),
+          dir: gridAt(g.windDirection, h), w: kmhToMph(gridAt(g.windSpeed, h)), gust: kmhToMph(gridAt(g.windGust, h)),
+          pop: gridAt(g.probabilityOfPrecipitation, h), thun: gridAt(g.probabilityOfThunder, h), sky: gridAt(g.skyCover, h)
+        };
+      });
+      const have = cols.some((c) => c.t != null);
+      const rows = [
+        ["Temperature °F", (c) => r0(c.t)],
+        ["Dew point °F", (c) => r0(c.d)],
+        ["Humidity %", (c) => r0(c.rh)],
+        ["WBGT °F", (c) => c.wbgt == null ? "—" : `${r0(c.wbgt)}${c.wbgtSrc === "est" ? "*" : ""}`],
+        ["Heat flag", (c) => { const f = wbgtFlag(c.wbgt); return f.cls ? `<span class="flag ${f.cls}">${f.label}</span>` : "—"; }],
+        ["Wind mph", (c) => c.w == null ? "—" : `${compass(c.dir)} ${r0(c.w)}`],
+        ["Gusts mph", (c) => r0(c.gust)],
+        ["Rain chance %", (c) => r0(c.pop)],
+        ["Thunder %", (c) => r0(c.thun)],
+        ["Sky cover %", (c) => r0(c.sky)]
+      ];
+      const head = `<thead><tr><th></th>${cols.map((c) => `<th>${fmtHour(c.h)}</th>`).join("")}</tr></thead>`;
+      const body = rows.map(([label, fn]) => `<tr><td>${label}</td>${cols.map((c) => `<td class="${inWindow(c.h) ? "in-window" : ""}">${fn(c)}</td>`).join("")}</tr>`).join("");
+      $("race-table").innerHTML = have ? head + `<tbody>${body}</tbody>` : `<tbody><tr><td>Status</td><td>Race morning is not in the NWS grid yet</td></tr></tbody>`;
+      renderRibbon();
+      renderVerdict(cols.filter((c) => inWindow(c.h)), have);
+
+      const usedEst = cols.some((c) => c.wbgtSrc === "est");
+      $("wbgt-note").textContent = "WBGT is the NWS Melbourne forecast value. Flags follow ACSM race guidance: under 50°F white, 50–65°F green, 65–73°F yellow, 73–82°F red, 82°F and above black." +
+        (usedEst ? " * Estimated from temperature and dew point (shade approximation) where NWS WBGT was missing; it reads low once the sun is up." : "");
+      $("race-meta").textContent = `Grid ${p.gridId} ${p.gridX},${p.gridY} at ${C.points.race.label}. NWS updated ${g.updateTime ? fmtTime(new Date(g.updateTime)) + " " + fmt(new Date(g.updateTime), { month: "short", day: "numeric" }) : "time unknown"}. Shaded columns span the start-group window.`;
+
+      // Point forecast: the night before and race day
+      const periods = (fc.properties?.periods || []).filter((x) => {
+        const start = new Date(x.startTime);
+        const key = dayKey(start);
+        return key === C.race.date || (key === "2026-10-22" && !x.isDaytime);
+      });
+      $("point-fc").innerHTML = periods.length ? periods.map((x) =>
+        `<article><h3>${esc(x.name)} <span>${x.isDaytime ? "High" : "Low"} ${x.temperature}°${x.probabilityOfPrecipitation?.value ? `, ${x.probabilityOfPrecipitation.value}% rain` : ""}</span></h3><p>${esc(x.detailedForecast)}</p></article>`
+      ).join("") : "<p>Friday is not in the 7-day point forecast yet, or the race day has passed.</p>";
+      state.race = "current";
+    } catch (err) {
+      $("race-table").innerHTML = `<tbody><tr><td>Status</td><td class="failed">Forecast request failed: ${esc(err.message)}</td></tr></tbody>`;
+      $("race-verdict").className = "verdict warn";
+      $("race-verdict").innerHTML = "<b>Race forecast unavailable</b>The NWS request failed. This is not an all-clear; check weather.gov/mlb.";
+      state.race = "failed";
+    }
+    renderSunLine();
+    updateState();
+  }
+
+  function renderVerdict(win, have) {
+    const v = $("race-verdict");
+    if (!have || !win.length) { v.className = "verdict"; v.innerHTML = "<b>Race morning not in the forecast grid yet</b>Check back as Friday comes into range."; return; }
+    const nums = (k) => win.map((c) => c[k]).filter((x) => x != null);
+    const span = (arr) => arr.length ? (Math.round(Math.min(...arr)) === Math.round(Math.max(...arr)) ? `${Math.round(arr[0])}°F` : `${Math.round(Math.min(...arr))}–${Math.round(Math.max(...arr))}°F`) : "—";
+    const t = nums("t"), d = nums("d"), w = nums("wbgt");
+    const maxPop = Math.max(0, ...nums("pop")), maxThun = Math.max(0, ...nums("thun")), maxGust = Math.max(0, ...nums("gust"));
+    const flag = wbgtFlag(w.length ? Math.max(...w) : null);
+    let level = "ok", headline = "Good running weather";
+    const notes = [];
+    if (maxThun >= 25) { level = "warn"; headline = "Lightning could delay start groups"; notes.push(`thunder chance up to ${maxThun}%`); }
+    else if (maxThun >= 10) { level = "caution"; headline = "Small chance of thunder"; notes.push(`thunder chance up to ${maxThun}%`); }
+    if (maxPop >= 50) { level = level === "warn" ? "warn" : "caution"; if (headline === "Good running weather") headline = "Wet race likely"; notes.push(`rain chance up to ${maxPop}%`); }
+    else if (maxPop >= 20) { if (level === "ok") { level = "caution"; headline = "Rain possible"; } notes.push(`rain chance up to ${maxPop}%`); }
+    if (flag.rank >= 3) { level = "warn"; headline = "Heat stress risk"; }
+    else if (flag.rank === 2 && level === "ok") { level = "caution"; headline = "Warm and humid"; }
+    if (maxGust >= 25) notes.push(`gusts to ${Math.round(maxGust)} mph`);
+    v.className = `verdict ${level}`;
+    v.innerHTML = `<b>${headline}</b>During start groups: ${span(t)}, dew point ${span(d)}, WBGT ${span(w)} (${flag.label.toLowerCase()} flag)${notes.length ? "; " + notes.join(", ") : ""}.`;
+  }
+
+  function renderRibbon() {
+    const p = C.points.race, ymd = C.race.date;
+    const h0 = C.race.hours[0], h1 = C.race.hours[C.race.hours.length - 1] + 1;
+    const start = localDate(ymd, h0).getTime(), end = localDate(ymd, h1).getTime();
+    const pct = (t) => Math.min(100, Math.max(0, (t - start) / (end - start) * 100));
+    const naut = sunRise(ymd, p.lat, p.lon, 102).getTime();
+    const civil = sunRise(ymd, p.lat, p.lon, 96).getTime();
+    const rise = sunRise(ymd, p.lat, p.lon, 90.833).getTime();
+    const css = getComputedStyle(document.documentElement);
+    const c = (n) => css.getPropertyValue(n).trim();
+    const grad = `linear-gradient(90deg, ${c("--sky-night")} 0%, ${c("--sky-night")} ${pct(naut)}%, ${c("--sky-twilight")} ${pct(civil)}%, ${c("--sky-dawn")} ${pct(rise)}%, ${c("--sky-day")} ${Math.min(100, pct(rise) + 12)}%, ${c("--sky-day")} 100%)`;
+    const g0 = pct(new Date(C.race.firstStart).getTime()), g1 = pct(new Date(C.race.lastStart).getTime());
+    const now = Date.now();
+    $("ribbon").style.background = grad;
+    $("ribbon").innerHTML =
+      `<div class="groups" style="left:${g0}%;width:${g1 - g0}%"><span>Start groups 4:30–7:30</span></div>` +
+      `<div class="sun" style="left:${pct(rise)}%"><span>Sunrise ${fmtTime(new Date(rise))}</span></div>` +
+      (now > start && now < end ? `<div class="now" style="left:${pct(now)}%" title="Now"></div>` : "");
+  }
+
+  function renderSunLine() {
+    const p = C.points.race, ymd = C.race.date;
+    $("sun-line").innerHTML =
+      `<span>First light <b>${fmtTime(sunRise(ymd, p.lat, p.lon, 96))}</b></span>` +
+      `<span>Sunrise <b>${fmtTime(sunRise(ymd, p.lat, p.lon, 90.833))}</b></span>` +
+      `<span>Most start groups run in the dark</span>`;
+  }
+
+  // ---------- TRIP DAYS ----------
+  async function loadTrip() {
+    try {
+      const p = await point("parks");
+      const fc = await request(p.forecast);
+      const periods = fc.properties?.periods || [];
+      const today = dayKey(new Date());
+      $("days").innerHTML = C.tripDays.map((day) => {
+        const dt = localDate(day.date, 12);
+        const dayP = periods.find((x) => x.isDaytime && dayKey(new Date(x.startTime)) === day.date);
+        const nightP = periods.find((x) => !x.isDaytime && dayKey(new Date(x.startTime)) === day.date);
+        const pop = Math.max(dayP?.probabilityOfPrecipitation?.value || 0, nightP?.probabilityOfPrecipitation?.value || 0);
+        const cls = ["day", day.race ? "race-day" : "", day.date < today ? "past" : ""].join(" ");
+        const title = fmt(dt, { weekday: "short", month: "short", day: "numeric" });
+        if (!dayP && !nightP) return `<article class="${cls}"><h3>${title}</h3><div class="what">${esc(day.note)}</div><div class="missing">${day.date < today ? "Day has passed" : "Not in the NWS 7-day forecast yet"}</div></article>`;
+        return `<article class="${cls}">
+          <h3>${title}</h3>
+          <div class="what">${esc(day.note)}</div>
+          <div class="temps">${dayP ? dayP.temperature + "°" : "—"} <span>/ ${nightP ? nightP.temperature + "°" : "—"}</span></div>
+          <div class="short">${esc(dayP?.shortForecast || nightP?.shortForecast || "")}</div>
+          <div class="pop">Rain chance <b>${pop}%</b>, wind ${esc((dayP || nightP).windDirection)} ${esc((dayP || nightP).windSpeed)}</div>
+          <details><summary>NWS text</summary>${dayP ? `<p><b>${esc(dayP.name)}:</b> ${esc(dayP.detailedForecast)}</p>` : ""}${nightP ? `<p><b>${esc(nightP.name)}:</b> ${esc(nightP.detailedForecast)}</p>` : ""}</details>
+        </article>`;
+      }).join("");
+      const upd = fc.properties?.updateTime || fc.properties?.generatedAt;
+      $("trip-meta").textContent = `Grid ${p.gridId} ${p.gridX},${p.gridY}, ${C.points.parks.label}. ${upd ? "NWS updated " + fmtTime(new Date(upd)) + "." : ""} Days past the 7-day range fill in as new periods are issued.`;
+      state.trip = "current";
+    } catch (err) {
+      $("days").innerHTML = `<p class="failed">Trip forecast unavailable: ${esc(err.message)}</p>`;
+      state.trip = "failed";
+    }
+    updateState();
+  }
+
+  // ---------- ALERTS ----------
+  const alertOrder = ["Tornado Warning", "Severe Thunderstorm Warning", "Flash Flood Warning", "Tornado Watch", "Severe Thunderstorm Watch", "Special Weather Statement"];
+  const prio = (e) => { const i = alertOrder.indexOf(e); return i < 0 ? 99 : i; };
+  async function alertsAt(name) {
+    const p = C.points[name];
+    const data = await request(`${API}/alerts/active?point=${p.lat},${p.lon}`);
+    return (data.features || []).map((f) => f.properties).sort((a, b) => prio(a.event) - prio(b.event));
+  }
+  async function loadAlerts() {
+    try {
+      const [race, parks] = await Promise.all([alertsAt("race"), alertsAt("parks")]);
+      const seen = new Set(), list = [];
+      [...race, ...parks].forEach((a) => { if (!seen.has(a.id)) { seen.add(a.id); list.push(a); } });
+      list.sort((a, b) => prio(a.event) - prio(b.event));
+      const box = $("alert-status");
+      if (!list.length) { box.className = "status-box"; box.innerHTML = "<b>No active NWS products for Disney property</b>"; }
+      else { box.className = `status-box ${list[0].event.includes("Warning") ? "warn" : "caution"}`; box.innerHTML = `<b>${esc(list[0].event)}</b>${list.length > 1 ? `${list.length} products active` : ""}`; }
+      $("alert-list").innerHTML = list.map((a) => `<article class="alert-item"><strong>${esc(a.event)}</strong><p>${esc(a.headline || "")}</p><time>Expires ${a.expires ? fmtTime(new Date(a.expires)) + " " + fmt(new Date(a.expires), { weekday: "short" }) : "unknown"}</time></article>`).join("");
+      $("alerts-meta").textContent = `Checked ${fmtTime(new Date())}. EPCOT and park-center points.`;
+      state.alerts = "current";
+    } catch (err) {
+      $("alert-status").className = "status-box failed";
+      $("alert-status").innerHTML = "<b>Alert status unavailable</b>The NWS alert request failed. This is not an all-clear.";
+      $("alerts-meta").textContent = `Last attempt ${fmtTime(new Date())}: ${err.message}`;
+      state.alerts = "failed";
+    }
+    updateState();
+  }
+
+  function outlookQuery(layer, outFields) {
+    const p = C.points.race;
+    const q = new URLSearchParams({ where: "1=1", geometry: `${p.lon},${p.lat}`, geometryType: "esriGeometryPoint", inSR: "4326", spatialRel: "esriSpatialRelIntersects", outFields, returnGeometry: "false", f: "json" });
+    return fetch(`${layer}/query?${q}`, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((d) => { if (d.error) throw new Error(d.error.message); return d.features || []; });
+  }
+  function setOutlook(id, label, level) { const el = $(id); el.className = `outlook ${level}`; el.querySelector("strong").textContent = label; }
+  async function loadOutlooks() {
+    const [spc, ero] = await Promise.allSettled([outlookQuery(SPC_DAY1, "dn"), outlookQuery(WPC_ERO_DAY1, "dn")]);
+    const top = (r) => Math.max(0, ...r.value.map((f) => Number(f.attributes?.dn || 0)));
+    if (spc.status === "fulfilled") {
+      const n = top(spc); const L = { 2: "General thunder", 3: "Marginal", 4: "Slight", 5: "Enhanced", 6: "Moderate", 8: "High" };
+      setOutlook("spc-outlook", L[n] || "None", n >= 6 ? "warning" : n >= 4 ? "elevated" : n === 3 ? "caution" : "clear");
+    } else setOutlook("spc-outlook", "Unavailable", "failed");
+    if (ero.status === "fulfilled") {
+      const n = top(ero); const L = { 1: "Marginal", 2: "Slight", 3: "Moderate", 4: "High" };
+      setOutlook("ero-outlook", L[n] || "Not expected", n >= 3 ? "warning" : n === 2 ? "elevated" : n === 1 ? "caution" : "clear");
+    } else setOutlook("ero-outlook", "Unavailable", "failed");
+    state.outlooks = [spc, ero].some((r) => r.status === "rejected") ? "failed" : "current";
+    updateState();
+  }
+
+  // ---------- TRAVEL ----------
+  function legHtml(periods, ymd, label) {
+    const ps = periods.filter((x) => dayKey(new Date(x.startTime)) === ymd);
+    const when = fmt(localDate(ymd, 12), { weekday: "long", month: "short", day: "numeric" });
+    if (!ps.length) return `<div class="leg"><div class="when">${when}, ${label}</div><p>${ymd < dayKey(new Date()) ? "Day has passed." : "Not in the NWS 7-day forecast yet."}</p></div>`;
+    return `<div class="leg"><div class="when">${when}, ${label}</div>${ps.map((x) => `<p><b>${esc(x.name)}:</b> ${x.isDaytime ? "High" : "Low"} ${x.temperature}°, ${esc(x.shortForecast)}${x.probabilityOfPrecipitation?.value ? `, ${x.probabilityOfPrecipitation.value}% rain` : ""}. Wind ${esc(x.windDirection)} ${esc(x.windSpeed)}.</p>`).join("")}</div>`;
+  }
+  async function loadTravel() {
+    try {
+      const [phlP, mcoP] = await Promise.all([point("phl"), point("mco")]);
+      const [phlF, mcoF, phlA, mcoA] = await Promise.all([request(phlP.forecast), request(mcoP.forecast), alertsAt("phl"), alertsAt("mco")]);
+      const pp = phlF.properties?.periods || [], mp = mcoF.properties?.periods || [];
+      const alertLine = (list) => list.length ? `<p class="${list.some((a) => a.event.includes("Warning")) ? "failed" : "age-late"}"><b>Active:</b> ${list.map((a) => esc(a.event)).join(", ")}</p>` : `<p class="src">No active NWS products at the airport.</p>`;
+      $("travel-phl").innerHTML = `<h3>Philadelphia (PHL)</h3>${alertLine(phlA)}${legHtml(pp, C.travelDays[0], "departing PHL")}${legHtml(pp, C.travelDays[1], "arriving PHL")}`;
+      $("travel-mco").innerHTML = `<h3>Orlando (MCO)</h3>${alertLine(mcoA)}${legHtml(mp, C.travelDays[0], "arriving MCO")}${legHtml(mp, C.travelDays[1], "departing MCO")}`;
+      $("travel-meta").textContent = `PHL grid ${phlP.gridId} ${phlP.gridX},${phlP.gridY}; MCO grid ${mcoP.gridId} ${mcoP.gridX},${mcoP.gridY}. Checked ${fmtTime(new Date())}.`;
+      state.travel = "current";
+    } catch (err) {
+      $("travel-meta").textContent = `Travel forecast unavailable: ${err.message}`;
+      state.travel = "failed";
+    }
+    updateState();
+  }
+  function renderTravelNow() {
+    const o = lastObs[C.travelStation.id];
+    $("travel-now").innerHTML = o
+      ? `<h3>PHL right now</h3><div class="leg"><div class="when">${C.travelStation.id}, observed ${fmtTime(o.time)} (${ageInfo(o.time).label})</div>
+         <p><b>${r0(o.t)}°</b>, dew point ${r0(o.d)}°. Wind ${o.dir} ${r0(o.w)} mph${o.g ? `, gusts ${r0(o.g)}` : ""}.</p>
+         <p>Visibility ${esc(o.vis)}, ceiling ${esc(o.cig)}. ${o.wx !== "—" ? "Weather: " + esc(o.wx) + "." : ""}</p></div>`
+      : `<h3>PHL right now</h3><p class="failed">KPHL observation unavailable.</p>`;
+  }
+
+  // ---------- HOURLY ----------
+  async function loadHourly() {
+    try {
+      const p = await point("parks");
+      const data = await request(p.forecastHourly);
+      const now = Date.now();
+      const ps = (data.properties?.periods || []).filter((x) => new Date(x.endTime).getTime() > now).slice(0, 12);
+      const row = (label, fn) => `<tr><td>${label}</td>${ps.map((x) => `<td>${fn(x)}</td>`).join("")}</tr>`;
+      $("hourly").innerHTML = `<thead><tr><th></th>${ps.map((x) => `<th>${fmtHour(new Date(x.startTime))}</th>`).join("")}</tr></thead><tbody>` +
+        row("Temp °F", (x) => x.temperature) +
+        row("Dew pt °F", (x) => x.dewpoint?.value == null ? "—" : r0(cToF(x.dewpoint.value))) +
+        row("Rain %", (x) => x.probabilityOfPrecipitation?.value ?? 0) +
+        row("Wind mph", (x) => `${esc(x.windDirection)} ${parseInt(x.windSpeed, 10) || 0}`) +
+        row("Sky", (x) => `<span title="${esc(x.shortForecast)}" style="font-size:13px">${esc(x.shortForecast.replace(/^(Mostly|Partly) /, "$1 ").split(" then ")[0])}</span>`) +
+        `</tbody>`;
+      $("hourly-meta").textContent = `${C.points.parks.label}. Checked ${fmtTime(new Date())}.`;
+      state.hourly = "current";
+    } catch (err) {
+      $("hourly").innerHTML = `<tbody><tr><td>Status</td><td class="failed">Hourly forecast failed: ${esc(err.message)}</td></tr></tbody>`;
+      state.hourly = "failed";
+    }
+    updateState();
+  }
+
+  // ---------- AFD ----------
+  function afdHighlights(text) {
+    const lines = text.replace(/\r/g, "").split("\n");
+    const k = lines.findIndex((l) => /^\s*\.?KEY MESSAGES/i.test(l));
+    if (k >= 0) {
+      const msgs = [];
+      for (const raw of lines.slice(k + 1)) {
+        const l = raw.trim();
+        if (l === "&&" || (/^\.[A-Z][A-Z /]+\.{3}/.test(l) && !/^\.KEY MESSAGES/i.test(l))) break;
+        if (!l || /^Updated at\b/i.test(l)) continue;
+        const b = l.match(/^[-•]\s+(.*)/);
+        if (b) msgs.push(b[1]); else if (msgs.length) msgs[msgs.length - 1] += " " + l;
+      }
+      if (msgs.length) return msgs;
+    }
+    const clean = lines.map((x) => x.trim()).filter(Boolean);
+    const out = [];
+    for (const key of ["SYNOPSIS", "DISCUSSION", "SHORT TERM", "LONG TERM"]) {
+      const i = clean.findIndex((l) => l.toUpperCase().startsWith(`.${key}`));
+      if (i >= 0) { const s = clean.slice(i + 1, i + 7).join(" ").split(/(?<=[.!?])\s+/).slice(0, 2).join(" "); if (s) out.push(s.slice(0, 400)); }
+      if (out.length === 3) break;
+    }
+    return out.length ? out : [clean.slice(0, 8).join(" ").slice(0, 500)];
+  }
+  async function loadAfd() {
+    try {
+      const idx = await request(`${API}/products/types/AFD/locations/${C.afdOffice}`);
+      const latest = idx["@graph"]?.[0];
+      if (!latest?.id) throw new Error("No current AFD");
+      const prod = await request(`${API}/products/${latest.id}`);
+      $("afd").innerHTML = afdHighlights(prod.productText || "").map((s) => `<p>${esc(s)}</p>`).join("");
+      $("afd-meta").textContent = `Issued ${prod.issuanceTime ? fmtTime(new Date(prod.issuanceTime)) + " " + fmt(new Date(prod.issuanceTime), { weekday: "short" }) : "unknown"}. Forecaster wording.`;
+      state.afd = "current";
+    } catch (err) {
+      $("afd").innerHTML = '<p class="failed">Discussion unavailable; use the full discussion link.</p>';
+      state.afd = "failed";
+    }
+    updateState();
+  }
+
+  // ---------- TROPICS ----------
+  async function loadTropics() {
+    try {
+      const r = await fetch(`${PROXY}/nhc`, { cache: "no-store" });
+      if (!r.ok) throw new Error(`Proxy ${r.status}`);
+      const data = await r.json();
+      const storms = (data.activeStorms || []).filter((s) => /^al/i.test(String(s.id || s.binNumber || "")) || /atlantic/i.test(String(s.basin || "")));
+      $("tropics").innerHTML = storms.length ? storms.map((s) => `<article class="storm"><strong>${esc(s.classification || "")} ${esc(s.name || s.id)}</strong>Max wind ${esc(s.intensity ?? "—")} mph, pressure ${esc(s.pressure ?? "—")} mb, moving ${esc(s.movementDir ?? "—")}° at ${esc(s.movementSpeed ?? "—")} mph.</article>`).join("")
+        : "<p>No active Atlantic tropical cyclones.</p>";
+      $("tropics-meta").textContent = `NHC via proxy. Checked ${fmtTime(new Date())}. Check NHC for areas being monitored.`;
+      state.tropics = "current";
+    } catch (err) {
+      $("tropics").innerHTML = '<p class="failed">NHC status unavailable; use the NHC link.</p>';
+      state.tropics = "failed";
+    }
+    updateState();
+  }
+
+  // ---------- CLOCK / STATE ----------
+  function updateState() {
+    const crit = [state.obs, state.race, state.alerts];
+    let s = "current";
+    if (crit.every((x) => x === "failed")) s = "offline";
+    else if (Object.values(state).some((x) => x === "failed")) s = "degraded";
+    else if (crit.some((x) => x === "stale")) s = "stale";
+    else if (Object.values(state).some((x) => x === "loading")) s = "loading";
+    const el = $("system-state");
+    el.textContent = { current: "Current", stale: "Stale", loading: "Loading", degraded: "Degraded", offline: "Offline" }[s];
+    el.className = `state ${s}`;
+    $("last-refresh").textContent = `Last check ${fmtTime(new Date())}`;
+  }
+  function tick() {
+    const now = new Date();
+    $("local-date").textContent = fmt(now, { weekday: "short", month: "short", day: "numeric" });
+    $("local-clock").textContent = fmt(now, { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    const first = new Date(C.race.firstStart).getTime(), last = new Date(C.race.lastStart).getTime();
+    const ms = first - now.getTime();
+    if (ms > 0) {
+      const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+      $("countdown").textContent = d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
+      $("countdown-label").textContent = "First start group in";
+    } else if (now.getTime() < last + 2 * 36e5) {
+      $("countdown").textContent = "Race underway";
+      $("countdown-label").textContent = "Wine & Dine 5K";
+    } else {
+      $("countdown").textContent = "Race complete";
+      $("countdown-label").textContent = "Wine & Dine 5K";
+    }
+  }
+
+  function start() {
+    $("links").innerHTML = C.links.map((l) => `<a href="${l.url}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("");
+    tick(); setInterval(tick, 1000);
+    renderRibbon(); renderSunLine();
+    loadObs(); loadRace(); loadTrip(); loadAlerts(); loadOutlooks(); loadTravel(); loadHourly(); loadAfd(); loadTropics();
+    setInterval(loadObs, C.refresh.obs);
+    setInterval(loadAlerts, C.refresh.alerts);
+    setInterval(() => { loadRace(); loadTrip(); loadHourly(); loadOutlooks(); }, C.refresh.forecast);
+    setInterval(() => { loadTravel(); loadAfd(); loadTropics(); }, C.refresh.slow);
+    setInterval(renderRibbon, 60000);
+  }
+  start();
+})();
+</script>
+</body>
+</html>
