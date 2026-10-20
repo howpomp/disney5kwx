@@ -174,6 +174,16 @@ table.race-table, table.hourly, table.obs { width: 100%; border-collapse: collap
 .day details p { font-size: 13.5px; margin: 6px 0 0; }
 
 /* Travel */
+.airport-status-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:0 0 12px; }
+.airport-status { border:1px solid var(--line); border-radius:5px; padding:10px 12px; background:var(--panel-2); }
+.airport-status .airport-line { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.airport-status h3 { margin:0; font:600 20px/1 var(--display); }
+.airport-status .badge { padding:3px 7px; border-radius:999px; font:600 13px/1 var(--display); white-space:nowrap; }
+.airport-status.clear .badge { background:var(--ok); color:#10162b; }
+.airport-status.caution .badge { background:var(--caution); color:#10162b; }
+.airport-status.warning .badge, .airport-status.failed .badge { background:var(--warn); color:#fff; }
+.airport-status p { margin:6px 0 0; font-size:13.5px; }
+.airport-status .detail { color:var(--muted); font-size:12.5px; }
 .travel h3 { margin: 0 0 6px; font: 600 18px/1.2 var(--display); }
 .leg { border-top: 1px solid var(--line); padding: 8px 0; }
 .leg:first-of-type { border-top: 0; }
@@ -210,6 +220,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
   .race-table-wrap { display:none; }
   .race-cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .race-bottomline { font-size:15px; }
+  .airport-status-grid { grid-template-columns:1fr; }
   .ribbon-wrap { margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -318,7 +329,12 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
 
   <!-- TRAVEL -->
   <section class="panel travel" id="travel-section" aria-labelledby="travel-title">
-    <div class="head"><h2 id="travel-title">Philadelphia travel days</h2><span class="src">PHL and MCO point forecasts</span></div>
+    <div class="head"><h2 id="travel-title">Philadelphia travel days</h2><span class="src">NWS + FAA NAS Status</span></div>
+    <div class="airport-status-grid" aria-label="FAA airport status">
+      <div class="airport-status" id="faa-phl"><div class="airport-line"><h3>PHL</h3><span class="badge">Checking</span></div><p>Checking FAA National Airspace System status.</p></div>
+      <div class="airport-status" id="faa-mco"><div class="airport-line"><h3>MCO</h3><span class="badge">Checking</span></div><p>Checking FAA National Airspace System status.</p></div>
+    </div>
+    <p class="meta" id="faa-meta">FAA status is airport-wide, not flight-specific.</p>
     <div class="grid-3">
       <div id="travel-phl"><h3>Philadelphia (PHL)</h3><p>Loading</p></div>
       <div id="travel-mco"><h3>Orlando (MCO)</h3><p>Loading</p></div>
@@ -399,7 +415,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
   const PROXY = "https://fau-weather-data-proxy.howpomp.workers.dev";
   const SPC_DAY1 = "https://mapservices.weather.noaa.gov/vector/rest/services/outlooks/SPC_wx_outlks/FeatureServer/1";
   const WPC_ERO_DAY1 = "https://mapservices.weather.noaa.gov/vector/rest/services/hazards/wpc_precip_hazards/MapServer/0";
-  const state = { obs: "loading", race: "loading", trip: "loading", alerts: "loading", travel: "loading", hourly: "loading", afd: "loading", tropics: "loading", outlooks: "loading" };
+  const state = { obs: "loading", race: "loading", trip: "loading", alerts: "loading", travel: "loading", faa: "loading", hourly: "loading", afd: "loading", tropics: "loading", outlooks: "loading" };
   const pointCache = {};
 
   // ---------- HELPERS ----------
@@ -798,6 +814,51 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     updateState();
   }
 
+  // ---------- FAA AIRPORT STATUS ----------
+  function renderFaaAirport(a) {
+    const el = $("faa-" + a.id.toLowerCase());
+    if (!el) return;
+    const events = Array.isArray(a.events) ? a.events : [];
+    const cls = a.status || "clear";
+    const badge = cls === "warning" ? "Major issue" : cls === "caution" ? "Delay / restriction" : "No FAA issue";
+    const detail = events.length
+      ? events.map((e) => {
+          const bits = [e.type];
+          if (e.delayMinutes != null) bits.push(`${Math.round(e.delayMinutes)} min`);
+          if (e.reason) bits.push(e.reason);
+          return bits.join(" · ");
+        }).join("<br>")
+      : "No active FAA airport traffic-management event reported.";
+    el.className = `airport-status ${cls}`;
+    el.innerHTML = `<div class="airport-line"><h3>${esc(a.id)}</h3><span class="badge">${esc(badge)}</span></div><p>${detail}</p>${a.config?.arrivals || a.config?.departures ? `<p class="detail">Runways: arrivals ${esc(a.config?.arrivals || "—")} · departures ${esc(a.config?.departures || "—")}</p>` : ""}`;
+  }
+
+  async function loadFaaAirports() {
+    try {
+      const r = await fetch(`${PROXY}/faa-airports?ids=PHL,MCO`, { cache: "no-store" });
+      if (!r.ok) throw new Error(`Proxy ${r.status}`);
+      const data = await r.json();
+      const airports = Array.isArray(data.airports) ? data.airports : [];
+      ["PHL","MCO"].forEach((id) => {
+        const a = airports.find((x) => x.id === id) || { id, status:"clear", events:[] };
+        renderFaaAirport(a);
+      });
+      $("faa-meta").textContent = `FAA National Airspace System Status checked ${fmtTime(new Date())}. Airport-wide conditions only; confirm individual flight status with the airline.`;
+      state.faa = "current";
+    } catch (err) {
+      ["phl","mco"].forEach((id) => {
+        const el = $("faa-" + id);
+        if (el) {
+          el.className = "airport-status failed";
+          el.innerHTML = `<div class="airport-line"><h3>${id.toUpperCase()}</h3><span class="badge">Unavailable</span></div><p>FAA airport status could not be loaded.</p>`;
+        }
+      });
+      $("faa-meta").textContent = `FAA status unavailable: ${err.message}`;
+      state.faa = "failed";
+    }
+    updateState();
+  }
+
   // ---------- TRAVEL ----------
   function legHtml(periods, ymd, label) {
     const ps = periods.filter((x) => dayKey(new Date(x.startTime)) === ymd);
@@ -948,7 +1009,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
   async function refreshAll() {
     const b = $("refresh-now");
     if (b) { b.disabled = true; b.textContent = "Refreshing…"; }
-    await Promise.allSettled([loadObs(), loadRace(), loadTrip(), loadAlerts(), loadOutlooks(), loadTravel(), loadHourly(), loadAfd(), loadTropics()]);
+    await Promise.allSettled([loadObs(), loadRace(), loadTrip(), loadAlerts(), loadOutlooks(), loadTravel(), loadFaaAirports(), loadHourly(), loadAfd(), loadTropics()]);
     if (b) { b.disabled = false; b.textContent = "Refresh now"; }
   }
 
@@ -979,7 +1040,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     renderRibbon(); renderSunLine();
     refreshAll();
     setInterval(loadObs, C.refresh.obs);
-    setInterval(loadAlerts, C.refresh.alerts);
+    setInterval(() => { loadAlerts(); loadFaaAirports(); }, C.refresh.alerts);
     setInterval(() => { loadRace(); loadTrip(); loadHourly(); loadOutlooks(); }, C.refresh.forecast);
     setInterval(() => { loadTravel(); loadAfd(); loadTropics(); }, C.refresh.slow);
     setInterval(renderRibbon, 60000);
