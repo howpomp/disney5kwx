@@ -251,7 +251,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     <div class="race-title">
       <div>
         <h2 id="race-title">Race morning, Friday Oct 23</h2>
-        <p>Disney Wine &amp; Dine 5K, EPCOT start area. Start groups go off from 4:30 to 7:30 AM.</p>
+        <p>Disney Wine &amp; Dine 5K, EPCOT start area. Howard is in Start Group E; start groups go off from 4:30 to 7:30 AM.</p>
       </div>
       <span class="src" id="race-src">NWS Melbourne digital forecast</span>
     </div>
@@ -365,6 +365,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
       date: "2026-10-23",
       firstStart: "2026-10-23T04:30:00-04:00",
       lastStart: "2026-10-23T07:30:00-04:00",
+      startGroup: "E",
       hours: [4, 5, 6, 7, 8, 9]        // table columns, local hour starts
     },
     points: {
@@ -699,7 +700,7 @@ footer.site { color: var(--muted); font-size: 12.5px; text-align: center; paddin
     const now = Date.now();
     $("ribbon").style.background = grad;
     $("ribbon").innerHTML =
-      `<div class="groups" style="left:${g0}%;width:${g1 - g0}%"><span>Start groups 4:30–7:30</span></div>` +
+      `<div class="groups" style="left:${g0}%;width:${g1 - g0}%"><span>Start Group ${C.race.startGroup} · groups 4:30–7:30</span></div>` +
       `<div class="sun" style="left:${pct(rise)}%"><span>Sunrise ${fmtTime(new Date(rise))}</span></div>` +
       (now > start && now < end ? `<div class="now" style="left:${pct(now)}%" title="Now"></div>` : "");
   }
